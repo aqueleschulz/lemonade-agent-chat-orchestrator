@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>João Schulz - PJT Final II</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="./styles.css" rel="stylesheet" />
+</head>
+<body>
+  <main class="shell">
+    <section class="chat">
+      <div id="messages" class="messages" aria-live="polite"></div>
+
+      <form id="ask-form" class="ask" autocomplete="off">
+        <input id="question" name="question" class="input" placeholder="Digite aqui..." required />
+        <button class="send" aria-label="Enviar pergunta">Enviar</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = "http://localhost:8080/api/ask";
+
+    const form = document.getElementById('ask-form');
+    const input = document.getElementById('question');
+    const messages = document.getElementById('messages');
+
+    function addBubble(text, who) {
+      const div = document.createElement('div');
+      div.className = 'bubble ' + (who === 'user' ? 'user' : 'bot');
+      div.textContent = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+
+      addBubble(q, 'user');
+      input.value = '';
+      addBubble('Pensando...', 'bot');
+
+      try {
+        const resp = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q })
+        });
+        const data = await resp.json();
+        messages.lastChild.textContent = data.answer || '(sem resposta)';
+        if (data.citations && data.citations.length) {
+          const c = document.createElement('div');
+          c.className = 'citations';
+          c.innerHTML = '<strong>Referências:</strong><ul>' +
+            data.citations.map(x => `<li>${x}</li>`).join('') + '</ul>';
+          messages.appendChild(c);
+        }
+      } catch (err) {
+        messages.lastChild.textContent = 'Erro ao consultar backend.';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
