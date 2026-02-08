@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/Gaia.Server/">
+    <Project Path="Gaia.Server/Gaia.Orchestrator/Gaia.Orchestrator.csproj" />
+  </Folder>
+</Solution>
