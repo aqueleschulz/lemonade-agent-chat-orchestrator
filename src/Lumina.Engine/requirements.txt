@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+markitdown[all]
+python-multipart
+requests
+pandas
+openpyxl

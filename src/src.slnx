@@ -1,5 +1,5 @@
 <Solution>
-  <Folder Name="/Gaia.Server/">
-    <Project Path="Gaia.Server/Gaia.Orchestrator/Gaia.Orchestrator.csproj" />
+  <Folder Name="/Lumina.Server/">
+    <Project Path="Lumina.Server/Lumina.Api/Lumina.Api.csproj" />
   </Folder>
 </Solution>

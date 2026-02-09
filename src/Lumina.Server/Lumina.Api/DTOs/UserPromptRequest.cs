@@ -1,4 +1,4 @@
-namespace Gaia.Orchestrator.DTOs
+namespace Lumina.Api.DTOs
 {
     public record UserPromptRequest(
         string Prompt

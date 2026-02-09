@@ -1,4 +1,4 @@
-namespace Gaia.Orchestrator.Services.Interfaces
+namespace Lumina.Api.Services.Interfaces
 {
     public interface ILemonadeService
     {

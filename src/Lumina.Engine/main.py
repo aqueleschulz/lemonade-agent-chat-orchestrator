@@ -5,12 +5,12 @@ import shutil
 import os
 import tempfile
 
-app = FastAPI(title="Gaia Engine (Python)", description="A simple API to convert files to text content using MarkItDown.", version="1.0.0")
+app = FastAPI(title="Lumina Engine (Python)", description="A simple API to convert files to text content using MarkItDown.", version="1.0.0")
 md = MarkItDown()
 
 @app.get("/health")
 def health_check():
-    return {"status": "operational", "service": "Gaia Engine (Python)"}
+    return {"status": "operational", "service": "Lumina Engine (Python)"}
 
 @app.post("/convert")
 async def convert_file(file: UploadFile = File(...)):

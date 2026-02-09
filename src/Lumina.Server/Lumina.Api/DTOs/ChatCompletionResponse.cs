@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-namespace Gaia.Orchestrator.DTOs
+namespace Lumina.Api.DTOs
 {
     public class ChatCompletionResponse
     {

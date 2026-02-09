@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
-using Gaia.Orchestrator.DTOs;
-using Gaia.Orchestrator.Services.Interfaces;
+using Lumina.Api.DTOs;
+using Lumina.Api.Services.Interfaces;
 
-namespace Gaia.Orchestrator.Services
+namespace Lumina.Api.Services
 {
     public class LemonadeService : ILemonadeService
     {

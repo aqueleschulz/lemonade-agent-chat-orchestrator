@@ -1,8 +1,8 @@
-using Gaia.Orchestrator.Services.Interfaces;
-using Gaia.Orchestrator.DTOs;
+using Lumina.Api.Services.Interfaces;
+using Lumina.Api.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Gaia.Orchestrator.Endpoints;
+namespace Lumina.Api.Endpoints;
 
 public static class ChatEndpointsExtensions
 {

@@ -1,6 +1,6 @@
-using Gaia.Orchestrator.Services;
-using Gaia.Orchestrator.Services.Interfaces;
-using Gaia.Orchestrator.Endpoints;
+using Lumina.Api.Services;
+using Lumina.Api.Services.Interfaces;
+using Lumina.Api.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
