@@ -23,5 +23,11 @@ public static class ChatEndpointsExtensions
         })
         .WithName("Chatbot")
         .WithDescription("Envia um prompt para a IA e recebe uma resposta limpa, sem metadados ou informações adicionais.");
+    
+        chatGroup.MapGet("/api/test/files", async (IEngineService engineService) =>
+        {
+            var files = await engineService.ListFilesAsync();
+            return Results.Ok(files);
+        });
     }
 }
