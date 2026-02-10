@@ -8,14 +8,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddHttpClient<ILemonadeService, LemonadeService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["LemonadeService:BaseUrl"] ?? "http://localhost:8000");
-});
-
 builder.Services.AddHttpClient<IEngineService, EngineService>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["EngineSettings:BaseUrl"] ?? "http://localhost:5001");
+});
+
+builder.Services.AddHttpClient<ILemonadeService, LemonadeService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["LemonadeService:BaseUrl"] ?? "http://localhost:8000");
 });
 
 var app = builder.Build();

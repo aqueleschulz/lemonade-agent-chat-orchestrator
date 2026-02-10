@@ -32,7 +32,7 @@ namespace Lumina.Api.Services
 
         public async Task<string> ReadFileAsync(string filename)
         {
-            var response = await _httpClient.GetAsync("/tools/read-file");
+            var response = await _httpClient.PostAsync($"/tools/read-file?filename={Uri.EscapeDataString(filename)}", null);
             response.EnsureSuccessStatusCode();
 
             if(response == null)

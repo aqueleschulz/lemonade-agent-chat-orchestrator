@@ -481,7 +481,7 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# --- Python & Gaia Engine ---
+# --- Python & Lumina Engine ---
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -513,6 +513,6 @@ wheels/
 # Logs
 *.log
 
-# Gaia Data
-src/Gaia.Engine/data/*
-!src/Gaia.Engine/data/.gitkeep
+# Lumina Data
+src/Lumina.Engine/data/*
+!src/Lumina.Engine/data/.gitkeep
