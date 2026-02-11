@@ -1,0 +1,54 @@
+name: .NET Build & Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-dotnet:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore ./src/Lumina.Server/Lumina.Api/Lumina.Api.csproj
+      
+    - name: Build
+      run: dotnet build ./src/Lumina.Server/Lumina.Api/Lumina.Api.csproj --no-restore --configuration Release
+    
+  build-python:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+          python-version: '3.13'
+
+    - name: Restore dependencies
+      run: |
+        cd src/Lumina.Engine
+        pip install -r requirements.txt
+    
+  docker-validation:
+    needs: [build-dotnet, build-python]
+    runs-on: ubuntu-latest
+  
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Try .NET image
+      run: docker build -f src/Lumina.Server/Lumina.Api/dockerfile .
+    
+    - name: Try Python image
+      run: docker build -f src/Lumina.Engine/dockerfile src/Lumina.Engine
