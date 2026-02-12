@@ -8,24 +8,24 @@ Diferente de wrappers simples de API, o Lumina implementa uma arquitetura híbri
 
 ## Arquitetura do Sistema
 
-O projeto utiliza o padrão **Sidecar / Polyglot Microservices**. O sistema é dividido em três pilares fundamentais:
+Este sistema é dividido em três pilares fundamentais:
 
-### 1. O Cérebro: Lumina API (.NET 9/10)
+### 1. Lumina API (.NET 9/10)
 
 O núcleo do sistema desenvolvido em ASP.NET Core Web API. É responsável por:
 
 * Gerenciar o estado da conversa e requisições do usuário.
-* Implementar a lógica de **Tool Calling (ReAct)** manualmente, decidindo quando a IA precisa agir.
+* Implementar a lógica de **Tool Calling** manualmente, decidindo quando a IA precisa agir.
 * Orquestrar a comunicação entre o usuário, o motor de dados e o servidor de inferência.
 
-### 2. O Músculo: Lumina Engine (Python FastAPI)
+### 2. Lumina Engine (Python FastAPI)
 
 Um microserviço especializado em ETL e processamento de dados.
 
 * Utiliza **Microsoft MarkItDown** para converter arquivos complexos (Excel, PDF, Word) em contexto legível (Markdown).
 * Expõe ferramentas (Tools) consumidas pela camada .NET via HTTP.
 
-### 3. A Alma: Lemonade Server (Inference)
+### 3. Lemonade Server (Inference)
 
 O servidor de inferência local compatível com OpenAI API que executa modelos como Gemma, Llama e Mistral utilizando aceleração de hardware (NPU/GPU).
 
@@ -49,7 +49,7 @@ O servidor de inferência local compatível com OpenAI API que executa modelos c
 
 ### Passo 1: Configurar o Lemonade Server
 
-Certifique-se de que o servidor de inferência está acessível. Se rodando no host Windows, o endereço para o Docker será: `http://host.docker.internal:8000`.
+Certifique-se de que o servidor de inferência está acessível. Se rodando no host Windows, o endereço para o Docker será: `http://host.docker.internal:8000`. A porta padrão de Lemonade Server também é 8000 e pode ser alterada.
 
 ### Passo 2: Subir a Orquestração
 
