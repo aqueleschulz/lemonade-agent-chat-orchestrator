@@ -516,3 +516,5 @@ wheels/
 # Lumina Data
 src/Lumina.Engine/data/*
 !src/Lumina.Engine/data/.gitkeep
+*.ps1
+*.sh

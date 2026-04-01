@@ -1,7 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
 markitdown[all]
 python-multipart
 requests
 pandas
 openpyxl
+# RAG — busca semântica e indexação vetorial local
+chromadb
+sentence-transformers

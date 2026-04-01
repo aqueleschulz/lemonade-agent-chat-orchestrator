@@ -1,0 +1,68 @@
+###############################################################################
+# Lumina Orchestrator — docker-compose.yml
+#
+# DRIVE CONFIGURATION (Google Drive, OneDrive, local folder, NFS…):
+#   1. Copy .env.example to .env
+#   2. Set HOST_DRIVE_PATH to the synchronized folder path on the host:
+#
+#      Windows – Google Drive for Desktop : C:\Users\Name\Google Drive\Lumina
+#      Windows – OneDrive                 : C:\Users\Name\OneDrive\Lumina
+#      Linux / macOS                      : /home/name/GoogleDrive/Lumina
+#
+#   NOTE FOR WINDOWS (Google Drive for Desktop / "Virtual Drive"):
+#   Docker Desktop accesses the Windows file system via WSL 2.
+#   Virtual folders (Google Drive File Stream, OneDrive on-demand) may NOT be
+#   accessible to Docker because they haven't been "realized" on the local disk yet.
+#   Solutions:
+#     a) Use "Google Drive for Desktop" in Mirror mode, which creates real copies.
+#     b) Use "OneDrive – Available offline" for the relevant folders.
+#     c) Use a standard local folder and configure two-way synchronization.
+#     d) (Advanced) Access files directly via Google Drive/OneDrive API 
+#        instead of reading the disk — see API integration documentation.
+###############################################################################
+
+services:
+
+  lumina-api:
+    build:
+      context: ./src/Lumina.Api
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5006"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      EngineSettings__BaseUrl: "http://lumina-engine:5001"
+      LemonadeSettings__BaseUrl: "http://lumina-lemonade:8000"
+      # LemonadeSettings__ModelName and MaxToolCallDepth read from appsettings.json
+    depends_on:
+      lumina-engine:
+        condition: service_healthy
+    restart: unless-stopped
+
+  lumina-engine:
+    build:
+      context: ./src/Lumina.Engine
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      # Path INSIDE the container where files are accessed
+      LUMINA_DRIVE_ROOT: "/app/data"
+      LUMINA_CHROMA_PATH: "/app/chroma_db"
+    volumes:
+      # HOST_DRIVE_PATH defined in .env → mapped to /app/data in the container
+      # Fallback: local folder ./src/Lumina.Engine/data
+      - "${HOST_DRIVE_PATH:-./src/Lumina.Engine/data}:/app/data"
+      # Named volume to persist the ChromaDB index between restarts
+      - lumina_chroma:/app/chroma_db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  lumina_chroma:
+    driver: local

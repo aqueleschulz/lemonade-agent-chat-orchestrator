@@ -4,6 +4,7 @@ namespace Lumina.Api.Services.Interfaces
     {
         Task<bool> CheckHealthAsync();
         Task<List<string>> ListFilesAsync();
-        Task<string> ReadFileAsync(string filename);    
+        Task<string> ReadFileAsync(string filename);
+        Task<string> SearchContentAsync(string query, string? filename = null);
     }
 }

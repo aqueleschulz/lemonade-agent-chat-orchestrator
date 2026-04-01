@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using Lumina.Api.DTOs;
 using Lumina.Api.Services.Interfaces;
 
@@ -7,97 +9,187 @@ namespace Lumina.Api.Services
     {
         private readonly HttpClient _httpClient;
         private readonly IEngineService _engineService;
-        public LemonadeService (HttpClient httpClient, IEngineService engineService)
+
+        private readonly string _modelName;
+        private readonly int _maxToolCallDepth;
+
+        public LemonadeService(
+            HttpClient httpClient,
+            IEngineService engineService,
+            IConfiguration configuration)
         {
             _httpClient = httpClient;
             _engineService = engineService;
+
+            _modelName = configuration["LemonadeSettings:ModelName"]
+                ?? throw new InvalidOperationException("LemonadeSettings:ModelName não está configurado em appsettings.json.");
+
+            _maxToolCallDepth = configuration.GetValue<int>("LemonadeSettings:MaxToolCallDepth", 5);
         }
+
         public async Task<string> GetCompletionAsync(string prompt, int recursionDepth = 0)
         {
-            if(recursionDepth > 1)
-                return "Erro: Não há mais tentativas de chamada de função disponíveis para evitar loops infinitos.";
+            if (recursionDepth >= _maxToolCallDepth)
+                return "Erro: Limite máximo de chamadas de ferramenta atingido para evitar loops infinitos.";
 
-            var tools = recursionDepth == 0 ? GetAvailableToolsAsync() : new List<ToolRequest>();
+            var tools = recursionDepth == 0 ? GetAvailableTools() : new List<ToolRequest>();
+
             var requestPayload = new ChatCompletionRequest(
-                        model: "Gemma-3-4b-it-GGUF",
-                        tools: tools,
-                        userPrompt: prompt
-                    );
+                model: _modelName,
+                tools: tools,
+                userPrompt: prompt
+            );
 
             var response = await _httpClient.PostAsJsonAsync("/api/v1/chat/completions", requestPayload);
-
             response.EnsureSuccessStatusCode();
 
             var responseData = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>();
-            
+
             List<ToolCall>? toolCalls = responseData?.Choices.FirstOrDefault()?.Message?.ToolCalls;
-            if(toolCalls != null && toolCalls.Count > 0)
+
+            if (toolCalls is { Count: > 0 })
             {
                 var toolCall = toolCalls.First();
-                if(toolCall.Function != null)
+
+                if (toolCall.Function is null)
+                    return "Erro: Chamada de função recebida sem objeto Function.";
+
+                string functionName = toolCall.Function.Name;
+                string arguments   = toolCall.Function.Arguments;
+
+                if (functionName == "read_files")
                 {
-                    string functionName = toolCall.Function.Name;
-                    string arguments = toolCall.Function.Arguments;
+                    string? filename = ExtractStringArgument(arguments, "filename");
 
-                    if(functionName == "read_files" && arguments.Contains("filename"))
-                    {
-                        var argsDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(arguments);
+                    if (string.IsNullOrWhiteSpace(filename))
+                        return $"Erro: argumento 'filename' ausente ou inválido. JSON recebido: {arguments}";
 
-                        if(argsDict == null)
-                            throw new Exception($"Falha ao desserializar os argumentos da função: {arguments}"); 
+                    string fileContent = await _engineService.ReadFileAsync(filename);
 
-                        if(argsDict != null && argsDict.ContainsKey("filename"))
-                        {
-                            string filename = argsDict["filename"];
-                            string fileContent = await _engineService.ReadFileAsync(filename);
+                    if (string.IsNullOrEmpty(fileContent))
+                        throw new InvalidOperationException(
+                            $"O conteúdo do arquivo '{filename}' está vazio ou não pôde ser lido.");
 
-                            if(string.IsNullOrEmpty(fileContent))
-                                throw new Exception($"O conteúdo do arquivo '{filename}' está vazio ou não pôde ser lido.");
-
-                            recursionDepth++;
-                            return await GetCompletionAsync($"[Sistema] O conteúdo do arquivo '{filename}' é:\n{fileContent}\n" +
-                            "[Sistema] Use essas informações para responder à pergunta do usuário, se necessário.\n" +
-                            "A pergunta do usuário é:" + prompt, recursionDepth);
-                        }
-                    }
+                    return await GetCompletionAsync(
+                        $"[Sistema] O conteúdo do arquivo '{filename}' é:\n{fileContent}\n\n" +
+                        "[Sistema] Use essas informações para responder à pergunta do usuário.\n" +
+                        "A pergunta do usuário é: " + prompt,
+                        recursionDepth + 1);
                 }
 
-                return "Erro: Chamada de função não reconhecida ou argumentos inválidos.";
+                if (functionName == "search_content")
+                {
+                    string? query    = ExtractStringArgument(arguments, "query");
+                    string? filename = ExtractStringArgument(arguments, "filename");
+
+                    if (string.IsNullOrWhiteSpace(query))
+                        return $"Erro: argumento 'query' ausente. JSON recebido: {arguments}";
+
+                    string searchResults = await _engineService.SearchContentAsync(query, filename);
+
+                    if (string.IsNullOrEmpty(searchResults))
+                        return $"Nenhum resultado encontrado para a query: '{query}'.";
+
+                    return await GetCompletionAsync(
+                        $"[Sistema] Trechos relevantes encontrados para '{query}':\n{searchResults}\n\n" +
+                        "[Sistema] Use esses trechos para responder à pergunta do usuário.\n" +
+                        "A pergunta do usuário é: " + prompt,
+                        recursionDepth + 1);
+                }
+
+                return $"Erro: Função '{functionName}' não reconhecida pelo orquestrador.";
             }
 
-            else
-            {
-                return responseData?.Choices?.FirstOrDefault()?.Message?.Content ?? "Erro: Sem resposta da IA.";
-            }
+            return responseData?.Choices?.FirstOrDefault()?.Message?.Content
+                   ?? "Erro: Sem resposta da IA.";
         }
 
-        private List<ToolRequest> GetAvailableToolsAsync()
+        private static string? ExtractStringArgument(string jsonArguments, string key)
         {
-            ToolRequest? readFiles = new ToolRequest(
+            if (string.IsNullOrWhiteSpace(jsonArguments))
+                return null;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonArguments);
+                if (doc.RootElement.TryGetProperty(key, out JsonElement prop))
+                {
+                    return prop.ValueKind switch
+                    {
+                        JsonValueKind.String => prop.GetString(),
+                        JsonValueKind.Null   => null,
+                        _                    => prop.ToString()
+                    };
+                }
+            }
+            catch (JsonException)
+            {
+                // The LLM occasionally returns non-JSON arguments; returns null safely.
+            }
+
+            return null;
+        }
+
+        private List<ToolRequest> GetAvailableTools()
+        {
+            var readFiles = new ToolRequest(
                 "function",
                 new ToolFunction
                 {
                     Name = "read_files",
-                    Description ="Lê o conteúdo de um arquivo que está no diretório de dados para extrair informações.",
+                    Description = "Lê o conteúdo COMPLETO de um ficheiro do diretório de dados. " +
+                                  "Use apenas para ficheiros pequenos. Para manuais ou planilhas grandes, prefira search_content.",
                     Parameters = new Parameters
                     {
                         Type = "object",
-                        Required = new List<string>() { "filename" },
-                        Properties = new Dictionary<string, Property>()
+                        Required = new List<string> { "filename" },
+                        Properties = new Dictionary<string, Property>
                         {
                             {
                                 "filename", new Property
                                 {
                                     Type = "string",
-                                    Description = "O nome com extensão do arquivo a ser lido. O arquivo deve estar localizado no diretório de dados."
+                                    Description = "Nome com extensão do ficheiro a ler (ex: 'manual.pdf')."
                                 }
-                            }   
+                            }
                         }
                     }
                 }
             );
 
-            return new List<ToolRequest> { readFiles };
+            var searchContent = new ToolRequest(
+                "function",
+                new ToolFunction
+                {
+                    Name = "search_content",
+                    Description = "Faz busca semântica nos documentos indexados e retorna os trechos mais relevantes. " +
+                                  "Ideal para ficheiros grandes onde injetar o conteúdo completo excederia o limite de tokens.",
+                    Parameters = new Parameters
+                    {
+                        Type = "object",
+                        Required = new List<string> { "query" },
+                        Properties = new Dictionary<string, Property>
+                        {
+                            {
+                                "query", new Property
+                                {
+                                    Type = "string",
+                                    Description = "Pergunta ou assunto a pesquisar nos documentos (ex: 'prazo de garantia do produto X')."
+                                }
+                            },
+                            {
+                                "filename", new Property
+                                {
+                                    Type = "string",
+                                    Description = "Opcional. Restringe a busca a um ficheiro específico."
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            return new List<ToolRequest> { readFiles, searchContent };
         }
     }
 }
